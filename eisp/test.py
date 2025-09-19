@@ -1,0 +1,53 @@
+def test_feature_extraction():
+    from .feature_extraction import FeatureVectors
+    from torch.utils.data import DataLoader, TensorDataset
+    import torch
+    import os
+    import numpy as np
+
+    # Create a simple dataset
+    data = torch.randn(100, 3, 32, 32)  # 100 samples of 3x32x32 images
+    labels = torch.randint(0, 10, (100,))  # Random labels for 10 classes
+    dataset = TensorDataset(data, labels)
+    dataloader = DataLoader(dataset, batch_size=10)
+
+    # Define simple feature extraction functions
+    def mean_feature(x):
+        return x.mean(dim=(1, 2, 3)).numpy().reshape(-1, 1)
+
+    def std_feature(x):
+        return x.std(dim=(1, 2, 3)).numpy().reshape(-1, 1)
+
+    proxy_features_functions = [mean_feature, std_feature]
+    proxy_features_names = ["mean", "std"]
+
+    # Run feature extraction
+    featureVectors = FeatureVectors.extract(
+        dataloader,
+        proxy_features_functions,
+        proxy_features_names,
+        store_path="./test_features",
+    )
+    features = featureVectors.get_all_features()
+
+    # Check if features are extracted correctly
+    assert len(features) == 2
+    assert "mean" in features
+    assert "std" in features
+    assert features["mean"].shape[0] == 100
+    assert features["std"].shape[0] == 100
+
+    # Check feature getters
+    mean_feature_loaded = featureVectors.get_feature("mean")
+    assert np.array_equal(mean_feature_loaded, features["mean"])
+
+    # Check if features are saved correctly
+    loaded_featureVectors = FeatureVectors.from_files("./test_features")
+    loaded_features = loaded_featureVectors.get_all_features()
+    assert np.array_equal(loaded_features["mean"], features["mean"])
+    assert np.array_equal(loaded_features["std"], features["std"])
+
+    # Clean up
+    for name in proxy_features_names:
+        os.remove(os.path.join("./test_features", f"{name}.npy"))
+    os.rmdir("./test_features")

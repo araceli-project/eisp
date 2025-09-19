@@ -1,3 +1,4 @@
-__all__ = ["feature_extraction"]
+__all__ = ["proxy_tasks", "ensemble"]
 
-from . import feature_extraction
+from . import proxy_tasks
+from . import ensemble

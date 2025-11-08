@@ -18,24 +18,34 @@ def test_feature_extraction():
     def std_feature(x):
         return x.std(dim=(1, 2, 3)).numpy().reshape(-1, 1)
 
-    proxy_features_functions = [mean_feature, std_feature]
-    proxy_features_names = ["mean", "std"]
+    def plus_constant_feature(x, constant=5):
+        return (x.mean(dim=(1, 2, 3)) + constant).numpy().reshape(-1, 1)
+
+    proxy_features_functions = [mean_feature, std_feature, plus_constant_feature]
+    proxy_features_names = ["mean", "std", "plus_constant"]
+    proxy_features_function_arguments = [None, None, {"constant": 10}]
 
     # Run feature extraction
     featureVectors = FeatureVectors.extract(
         dataloader,
         proxy_features_functions,
         proxy_features_names,
+        proxy_features_function_arguments,
         store_path="./test_features",
     )
     features = featureVectors.get_all_features()
 
     # Check if features are extracted correctly
-    assert len(features) == 2
+    assert len(features) == 3
     assert "mean" in features
     assert "std" in features
+    assert "plus_constant" in features
     assert features["mean"].shape[0] == 100
     assert features["std"].shape[0] == 100
+    assert features["plus_constant"].shape[0] == 100
+
+    # Check if the plus_constant feature is correctly computed
+    assert np.array_equal(features["plus_constant"], features["mean"] + 10)
 
     # Check feature getters
     mean_feature_loaded = featureVectors.get_feature("mean")

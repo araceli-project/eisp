@@ -17,6 +17,7 @@ class FeatureVectors:
         dataloader: Iterable[any],
         proxy_features_functions: list[Callable[[any], np.ndarray]],
         proxy_features_names: list[str] = None,
+        proxy_features_function_arguments: list[dict] = None,
         store_path: str = None,
     ) -> Self:
         if store_path and not os.path.exists(store_path):
@@ -33,14 +34,29 @@ class FeatureVectors:
             raise ValueError(
                 "Length of proxy_features_functions and proxy_features_names must match."
             )
+        if not proxy_features_function_arguments:
+            proxy_features_function_arguments = [None] * len(proxy_features_functions)
+        if len(proxy_features_functions) != len(proxy_features_function_arguments):
+            raise ValueError(
+                "Length of proxy_features_functions and proxy_features_function_arguments must match."
+            )
 
         all_features = {name: [] for name in proxy_features_names}
 
-        for data in tqdm.tqdm(dataloader, desc="Extracting features"):
-            inputs, _ = data  # Assuming dataloader returns (inputs, labels)
-
-            for func, name in zip(proxy_features_functions, proxy_features_names):
-                features = func(inputs)  # Extract features using the provided function
+        for function, name, args in zip(
+            proxy_features_functions,
+            proxy_features_names,
+            proxy_features_function_arguments,
+        ):
+            if not callable(function):
+                raise ValueError(
+                    f"Feature extraction function for {name} is not callable."
+                )
+            for data in tqdm.tqdm(dataloader, desc="Extracting features"):
+                inputs, _ = data  # Assuming dataloader returns (inputs, labels)
+                features = function(
+                    inputs, **(args or {})
+                )  # Extract features using the provided function
                 all_features[name].append(features)
 
         # Concatenate and save features

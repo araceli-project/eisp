@@ -1,5 +1,5 @@
 def test_feature_extraction():
-    from .feature_extraction import FeatureVectors
+    from .proxy_tasks import FeatureVectors
     from torch.utils.data import DataLoader, TensorDataset
     import torch
     import os

@@ -47,14 +47,21 @@ class FeatureVectors:
 
         if parallel:
             # Parallel feature extraction
-            def extract_features_feature(function, args, data):
-                inputs, _ = data  # Assuming dataloader returns (inputs, labels)
-                return function(inputs, **(args or {}))
+            def extract_features_feature(function, args, dataloader):
+                results = []
+                for data in dataloader:
+                    inputs, _ = data  # Assuming dataloader returns (inputs, labels)
+                    result = function(inputs, **(args or {}))
+                    results.append(result)
+                return results
 
             with joblib.Parallel(n_jobs=-1) as parallel:
                 results = parallel(
-                    joblib.delayed(extract_features_feature)(function, args, data)
-                    for data in dataloader
+                    joblib.delayed(extract_features_feature)(function, args, dataloader)
+                    for function, args in zip(
+                        proxy_features_functions,
+                        proxy_features_function_arguments,
+                    )
                 )
             for name, result in zip(proxy_features_names, results):
                 all_features[name].extend(result)

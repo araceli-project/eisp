@@ -4,6 +4,7 @@ import numpy as np
 from sklearn.decomposition import PCA
 from typing import Self, Callable
 from collections.abc import Iterable
+import joblib
 
 
 class FeatureVectors:
@@ -19,6 +20,7 @@ class FeatureVectors:
         proxy_features_names: list[str] = None,
         proxy_features_function_arguments: list[dict] = None,
         store_path: str = None,
+        parallel: bool = False,
     ) -> Self:
         if store_path and not os.path.exists(store_path):
             os.makedirs(store_path)
@@ -43,21 +45,36 @@ class FeatureVectors:
 
         all_features = {name: [] for name in proxy_features_names}
 
-        for function, name, args in zip(
-            proxy_features_functions,
-            proxy_features_names,
-            proxy_features_function_arguments,
-        ):
-            if not callable(function):
-                raise ValueError(
-                    f"Feature extraction function for {name} is not callable."
-                )
-            for data in tqdm.tqdm(dataloader, desc="Extracting features"):
+        if parallel:
+            # Parallel feature extraction
+            def extract_features_feature(function, args, data):
                 inputs, _ = data  # Assuming dataloader returns (inputs, labels)
-                features = function(
-                    inputs, **(args or {})
-                )  # Extract features using the provided function
-                all_features[name].append(features)
+                return function(inputs, **(args or {}))
+
+            with joblib.Parallel(n_jobs=-1) as parallel:
+                results = parallel(
+                    joblib.delayed(extract_features_feature)(function, args, data)
+                    for data in dataloader
+                )
+            for name, result in zip(proxy_features_names, results):
+                all_features[name].extend(result)
+        else:
+            # Sequential feature extraction
+            for function, name, args in zip(
+                proxy_features_functions,
+                proxy_features_names,
+                proxy_features_function_arguments,
+            ):
+                if not callable(function):
+                    raise ValueError(
+                        f"Feature extraction function for {name} is not callable."
+                    )
+                for data in tqdm.tqdm(dataloader, desc="Extracting features"):
+                    inputs, _ = data  # Assuming dataloader returns (inputs, labels)
+                    features = function(
+                        inputs, **(args or {})
+                    )  # Extract features using the provided function
+                    all_features[name].append(features)
 
         # Concatenate and save features
         for name in proxy_features_names:

@@ -18,7 +18,7 @@ class Ensemble:
     def train(
         self,
         model_type: str,
-        hyperparams: dict,
+        hyperparams: dict = None,
         metric_function: Callable[
             [np.ndarray, np.ndarray], float
         ] = balanced_accuracy_score,
@@ -27,7 +27,7 @@ class Ensemble:
         num_boost_round: int = 100,
     ):
 
-        features = self.feature_vectors.get_all_features().values()
+        features = list(self.feature_vectors.get_all_features().values())
         X = np.concatenate(features, axis=1)
         y = self.training_labels
 
@@ -99,7 +99,10 @@ class Ensemble:
             return metric_function(y_val, preds)
 
         if optimization_trials > 0:
-            study = optuna.create_study(direction=optimization_direction)
+            study = optuna.create_study(
+                direction=optimization_direction,
+                study_name="xgboost_ensemble_optimization",
+            )
             study.optimize(optimize, n_trials=optimization_trials)
 
             best_params = study.best_params

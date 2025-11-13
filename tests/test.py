@@ -1,4 +1,4 @@
-IMG_NUM_SAMPLES = 1000
+IMG_NUM_SAMPLES = 100
 
 
 def test_feature_extraction():

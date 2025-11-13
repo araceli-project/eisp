@@ -2,7 +2,7 @@ IMG_NUM_SAMPLES = 1000
 
 
 def test_feature_extraction():
-    from .proxy_tasks import FeatureVectors
+    from src.eisp.proxy_tasks import FeatureVectors
     from torch.utils.data import DataLoader, TensorDataset
     import torch
     import os
@@ -69,7 +69,7 @@ def test_feature_extraction():
 
 
 def test_feature_extraction_parallel():
-    from .proxy_tasks import FeatureVectors
+    from src.eisp.proxy_tasks import FeatureVectors
     from torch.utils.data import DataLoader, TensorDataset
     import torch
     import os

@@ -1,6 +1,6 @@
 import xgboost
 from sklearn.metrics import balanced_accuracy_score
-from .proxy_tasks import FeatureVectors
+from eisp.proxy_tasks import FeatureVectors
 import optuna
 import numpy as np
 from sklearn.model_selection import train_test_split

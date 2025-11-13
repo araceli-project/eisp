@@ -1,19 +1,39 @@
 [project]
 name = "eisp"
 version = "0.1.0"
-description = "Add your description here"
+authors = [{ name = "Clara Ernesto", email = "clrcera05@gmail.com" }]
+description = "A framework using an ensemble for inference on sensitive data using proxy tasks."
 readme = "README.md"
 requires-python = ">=3.12"
-dependencies = [
-    "joblib>=1.5.2",
-    "numpy>=2.3.2",
-    "optuna>=4.5.0",
-    "scikit-learn>=1.7.2",
-    "torch>=2.8.0",
-    "torchvision>=0.23.0",
-    "tqdm>=4.67.1",
-    "xgboost>=3.0.5",
+classifiers = [
+  "Programming Language :: Python :: 3",
+  "Operating System :: OS Independent",
 ]
+license = "MIT"
+dependencies = [
+  "joblib>=1.5.2",
+  "numpy>=2.3.2",
+  "optuna>=4.5.0",
+  "scikit-learn>=1.7.2",
+  "torch>=2.8.0",
+  "torchvision>=0.23.0",
+  "tqdm>=4.67.1",
+  "xgboost>=3.0.5",
+]
+
+license-files = ["LICENSE"]
+
+[build-system]
+requires = ["uv_build >= 0.9.8, <0.10.0"]
+build-backend = "uv_build"
 
 [dependency-groups]
 dev = ["pytest>=8.4.2"]
+
+
+[project.urls]
+Homepage = "https://github.com/araceli-project/eisp"
+Issues = "https://github.com/araceli-project/eisp/issues"
+
+[tool.pytest.ini_options]
+pythonpath = ["src"]

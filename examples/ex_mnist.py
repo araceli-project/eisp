@@ -3,8 +3,8 @@ import shutil
 
 
 def test_ensemble_training_mnist():
-    from .ensemble import Ensemble
-    from .proxy_tasks import FeatureVectors
+    from ..src.eisp.ensemble import Ensemble
+    from ..src.eisp.proxy_tasks import FeatureVectors
     import numpy as np
 
     import torchvision

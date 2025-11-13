@@ -1,5 +1,7 @@
 name: Linting and Formatting Checks
-on: pull_request
+on:
+  - pull_request
+  - push
 
 jobs:
   black:

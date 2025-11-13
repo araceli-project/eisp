@@ -1,6 +1,6 @@
 [project]
 name = "eisp"
-version = "0.1.0"
+version = "0.2.1"
 authors = [{ name = "Clara Ernesto", email = "clrcera05@gmail.com" }]
 description = "A framework using an ensemble for inference on sensitive data using proxy tasks."
 readme = "README.md"
@@ -28,11 +28,7 @@ requires = ["uv_build >= 0.9.8, <0.10.0"]
 build-backend = "uv_build"
 
 [dependency-groups]
-dev = [
-    "black>=25.11.0",
-    "pytest>=8.4.2",
-    "ruff>=0.14.5",
-]
+dev = ["black>=25.11.0", "pytest>=8.4.2", "ruff>=0.14.5"]
 
 
 [project.urls]

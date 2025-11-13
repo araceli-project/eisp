@@ -1,10 +1,10 @@
 [project]
 name = "eisp"
-version = "0.2.4"
+version = "0.2.41"
 authors = [{ name = "Clara Ernesto", email = "clrcera05@gmail.com" }]
 description = "A framework using an ensemble for inference on sensitive data using proxy tasks."
 readme = "README.md"
-requires-python = ">=3.6"
+requires-python = ">=3.10"
 classifiers = [
   "Programming Language :: Python :: 3",
   "Operating System :: OS Independent",

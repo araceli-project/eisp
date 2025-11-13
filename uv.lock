@@ -96,7 +96,7 @@ wheels = [
 
 [[package]]
 name = "eisp"
-version = "0.2.3"
+version = "0.2.41"
 source = { editable = "." }
 dependencies = [
     { name = "joblib" },

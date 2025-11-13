@@ -2,9 +2,10 @@ import os
 import tqdm
 import numpy as np
 from sklearn.decomposition import PCA
-from typing import Self, Callable
+from typing import Callable
 from collections.abc import Iterable
 import joblib
+from typing_extensions import Self
 
 
 class FeatureVectors:

@@ -107,6 +107,7 @@ dependencies = [
     { name = "torch" },
     { name = "torchvision" },
     { name = "tqdm" },
+    { name = "typing-extensions" },
     { name = "xgboost" },
 ]
 
@@ -126,6 +127,7 @@ requires-dist = [
     { name = "torch", specifier = ">=2.8.0" },
     { name = "torchvision", specifier = ">=0.23.0" },
     { name = "tqdm", specifier = ">=4.67.1" },
+    { name = "typing-extensions", specifier = ">=4.15.0" },
     { name = "xgboost", specifier = ">=3.0.5" },
 ]
 

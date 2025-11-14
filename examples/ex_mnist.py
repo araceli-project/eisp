@@ -1,5 +1,4 @@
 from sklearn.metrics import balanced_accuracy_score
-import shutil
 
 
 from eisp.ensemble import Ensemble

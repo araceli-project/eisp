@@ -12,8 +12,12 @@ class FeatureVectors:
     def __init__(self, features: dict):
         self.features: dict[str, np.ndarray] = features
         self.pca_processed: bool = False
-        self.tuples_count: int = features.values().__iter__().__next__().shape[0]
-        self.features_num: int = len(features)
+        if len(features) == 0:
+            self.tuples_count = 0
+            self.features_num = 0
+        else:
+            self.tuples_count: int = features.values().__iter__().__next__().shape[0]
+            self.features_num: int = len(features)
 
     def extract(
         dataloader: Iterable[any],
@@ -77,7 +81,9 @@ class FeatureVectors:
                     raise ValueError(
                         f"Feature extraction function for {name} is not callable."
                     )
-                for data in tqdm.tqdm(dataloader, desc="Extracting features"):
+                for data in tqdm.tqdm(
+                    dataloader, desc="Extracting features for " + name
+                ):
                     inputs, _ = data  # Assuming dataloader returns (inputs, labels)
                     features = function(
                         inputs, **(args or {})

@@ -4,6 +4,12 @@ import shutil
 
 from eisp.ensemble import Ensemble
 from eisp.proxy_tasks import FeatureVectors
+from eisp.visualization import (
+    plot_tsne,
+    plot_tsne_per_feature,
+    plot_umap,
+    plot_umap_per_feature,
+)
 import numpy as np
 
 import torchvision
@@ -43,8 +49,8 @@ def image_std(x):
 feature_functions = [image_itself, image_mean, image_std]
 
 # Extract features for training set
-train_feature_path = "./mnist_train_features"
-train_features = FeatureVectors.extract(
+train_feature_path = "./data/mnist_train_features"
+train_features: FeatureVectors = FeatureVectors.extract(
     train_loader,
     feature_functions,
     feature_names,
@@ -54,6 +60,59 @@ train_labels = []
 for _, target in train_loader:
     train_labels.append(target.numpy())
 train_labels = np.concatenate(train_labels, axis=0)
+
+# Plot t-SNE of extracted features
+tsne_save_path = "./data/mnist_vis/mnist_tsne_plot.png"
+plot_tsne(
+    train_features,
+    labels=train_labels,
+    save_path=tsne_save_path,
+    perplexity=30,
+)
+print(f"t-SNE plot saved to {tsne_save_path}")
+
+# Plot t-SNE of extracted features with PCA
+train_features_pca = train_features.apply_pca()
+tsne_save_path_pca = "./data/mnist_vis/mnist_tsne_plot_pca.png"
+plot_tsne(
+    train_features_pca,
+    labels=train_labels,
+    save_path=tsne_save_path_pca,
+    perplexity=30,
+)
+print(f"t-SNE plot with PCA saved to {tsne_save_path_pca}")
+
+# Plot t-SNE per feature with pca
+tsne_per_feature_save_dir = "./data/mnist_vis/tsne_per_feature"
+plot_tsne_per_feature(
+    train_features_pca,
+    labels=train_labels,
+    save_dir=tsne_per_feature_save_dir,
+    perplexity=30,
+)
+print(f"t-SNE per feature plots saved to {tsne_per_feature_save_dir}")
+
+# Plot UMAP of extracted features with PCA
+umap_save_path = "./data/mnist_vis/mnist_umap_plot_pca.png"
+plot_umap(
+    train_features_pca,
+    labels=train_labels,
+    save_path=umap_save_path,
+    n_neighbors=15,
+    min_dist=0.1,
+)
+print(f"UMAP plot saved to {umap_save_path}")
+
+# Plot UMAP per feature with PCA
+umap_per_feature_save_dir = "./data/mnist_vis/umap_per_feature"
+plot_umap_per_feature(
+    train_features_pca,
+    labels=train_labels,
+    save_dir=umap_per_feature_save_dir,
+    n_neighbors=15,
+    min_dist=0.1,
+)
+print(f"UMAP per feature plots saved to {umap_per_feature_save_dir}")
 
 # Initialize and train ensemble
 ensemble_model = Ensemble(train_features, train_labels)
@@ -68,5 +127,3 @@ ensemble_model.train(
 print("Ensemble training on MNIST completed successfully.")
 print(f"Best validation metric: {ensemble_model.best_val_metric}")
 print(f"Test metric: {ensemble_model.test_metric}")
-shutil.rmtree(train_feature_path)
-shutil.rmtree("./data")

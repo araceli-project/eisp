@@ -11,6 +11,7 @@ def plot_tsne(
     labels: np.ndarray = None,
     save_path: str = "tsne_plot.png",
     perplexity: int = 30,
+    random_state: int = None,
 ):
     all_features = features.get_all_features()
     if len(all_features) == 0:
@@ -22,7 +23,7 @@ def plot_tsne(
     concatenated_features = np.concatenate(list(all_features.values()), axis=1)
     if concatenated_features.shape[1] < 2:
         raise ValueError("At least two feature dimensions are required for t-SNE.")
-    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+    tsne = TSNE(n_components=2, perplexity=perplexity, random_state=random_state)
     tsne_results = tsne.fit_transform(concatenated_features)
 
     plt.figure(figsize=(8, 6))
@@ -43,6 +44,7 @@ def plot_umap(
     save_path: str = "umap_plot.png",
     n_neighbors: int = 15,
     min_dist: float = 0.1,
+    random_state: int = None,
 ):
     all_features = features.get_all_features()
     if len(all_features) == 0:
@@ -55,7 +57,7 @@ def plot_umap(
     if concatenated_features.shape[1] < 2:
         raise ValueError("At least two feature dimensions are required for UMAP.")
     umap_model = umap.UMAP(
-        n_neighbors=n_neighbors, min_dist=min_dist, n_components=2, random_state=42
+        n_neighbors=n_neighbors, min_dist=min_dist, n_components=2, random_state=random_state
     )
     umap_results = umap_model.fit_transform(concatenated_features)
 
@@ -76,6 +78,7 @@ def plot_tsne_per_feature(
     labels: np.ndarray = None,
     save_dir: str = "tsne_per_feature",
     perplexity: int = 30,
+    random_state: int = None,
 ):
     all_features = features.get_all_features()
     if len(all_features) == 0:
@@ -90,7 +93,7 @@ def plot_tsne_per_feature(
     for feature_name, feature_data in all_features.items():
         if feature_data.shape[1] < 2:
             continue  # Skip features with less than 2 dimensions
-        tsne = TSNE(n_components=2, perplexity=perplexity, random_state=42)
+        tsne = TSNE(n_components=2, perplexity=perplexity, random_state=random_state)
         tsne_results = tsne.fit_transform(feature_data)
 
         plt.figure(figsize=(8, 6))
@@ -111,6 +114,7 @@ def plot_umap_per_feature(
     save_dir: str = "umap_per_feature",
     n_neighbors: int = 15,
     min_dist: float = 0.1,
+    random_state: int = None,
 ):
     all_features = features.get_all_features()
     if len(all_features) == 0:
@@ -126,7 +130,7 @@ def plot_umap_per_feature(
         if feature_data.shape[1] < 2:
             continue  # Skip features with less than 2 dimensions
         umap_model = umap.UMAP(
-            n_neighbors=n_neighbors, min_dist=min_dist, n_components=2, random_state=42
+            n_neighbors=n_neighbors, min_dist=min_dist, n_components=2, random_state=random_state
         )
         umap_results = umap_model.fit_transform(feature_data)
 

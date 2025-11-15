@@ -95,6 +95,7 @@ def test_tsne_plot_no_labels():
     # Clean up
     os.remove(save_path)
 
+
 def test_tsne_plot_insufficient_dimensions():
     from src.eisp.visualization import plot_tsne
     from src.eisp.proxy_tasks import FeatureVectors

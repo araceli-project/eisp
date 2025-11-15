@@ -28,6 +28,8 @@ def test_umap_plot():
 
     # Clean up
     os.remove(save_path)
+
+
 def test_umap_plot_no_features():
     from src.eisp.visualization import plot_umap
     from src.eisp.proxy_tasks import FeatureVectors
@@ -43,7 +45,11 @@ def test_umap_plot_no_features():
 
     # Expect ValueError when no features are available
     with pytest.raises(ValueError, match="No features available for UMAP plotting."):
-        plot_umap(featureVectors, labels, save_path="dummy.png", n_neighbors=10, min_dist=0.2)
+        plot_umap(
+            featureVectors, labels, save_path="dummy.png", n_neighbors=10, min_dist=0.2
+        )
+
+
 def test_umap_plot_label_length_mismatch():
     from src.eisp.visualization import plot_umap
     from src.eisp.proxy_tasks import FeatureVectors
@@ -63,7 +69,10 @@ def test_umap_plot_label_length_mismatch():
     with pytest.raises(
         ValueError, match="Length of labels must match the number of feature vectors."
     ):
-        plot_umap(featureVectors, labels, save_path="dummy.png", n_neighbors=10, min_dist=0.2)
+        plot_umap(
+            featureVectors, labels, save_path="dummy.png", n_neighbors=10, min_dist=0.2
+        )
+
 
 def test_umap_plot_no_labels():
     from src.eisp.visualization import plot_umap
@@ -91,6 +100,8 @@ def test_umap_plot_no_labels():
 
     # Clean up
     os.remove(save_path)
+
+
 def test_umap_plot_insufficient_dimensions():
     from src.eisp.visualization import plot_umap
     from src.eisp.proxy_tasks import FeatureVectors
@@ -107,5 +118,9 @@ def test_umap_plot_insufficient_dimensions():
     labels = np.random.randint(0, 5, size=num_samples)
 
     # Expect ValueError when features have less than 2 dimensions
-    with pytest.raises(ValueError, match="At least two feature dimensions are required for UMAP."):
-        plot_umap(featureVectors, labels, save_path="dummy.png", n_neighbors=10, min_dist=0.2)
+    with pytest.raises(
+        ValueError, match="At least two feature dimensions are required for UMAP."
+    ):
+        plot_umap(
+            featureVectors, labels, save_path="dummy.png", n_neighbors=10, min_dist=0.2
+        )

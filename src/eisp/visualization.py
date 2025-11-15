@@ -31,7 +31,7 @@ def plot_tsne(
     plt.title("t-SNE Visualization of Feature Vectors")
     plt.xlabel("t-SNE Dimension 1")
     plt.ylabel("t-SNE Dimension 2")
-    if '/' in save_path:
+    if "/" in save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path)
     plt.close()
@@ -57,7 +57,10 @@ def plot_umap(
     if concatenated_features.shape[1] < 2:
         raise ValueError("At least two feature dimensions are required for UMAP.")
     umap_model = umap.UMAP(
-        n_neighbors=n_neighbors, min_dist=min_dist, n_components=2, random_state=random_state
+        n_neighbors=n_neighbors,
+        min_dist=min_dist,
+        n_components=2,
+        random_state=random_state,
     )
     umap_results = umap_model.fit_transform(concatenated_features)
 
@@ -66,7 +69,7 @@ def plot_umap(
     plt.title("UMAP Visualization of Feature Vectors")
     plt.xlabel("UMAP Dimension 1")
     plt.ylabel("UMAP Dimension 2")
-    if '/' in save_path:
+    if "/" in save_path:
         os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path)
     plt.close()
@@ -130,7 +133,10 @@ def plot_umap_per_feature(
         if feature_data.shape[1] < 2:
             continue  # Skip features with less than 2 dimensions
         umap_model = umap.UMAP(
-            n_neighbors=n_neighbors, min_dist=min_dist, n_components=2, random_state=random_state
+            n_neighbors=n_neighbors,
+            min_dist=min_dist,
+            n_components=2,
+            random_state=random_state,
         )
         umap_results = umap_model.fit_transform(feature_data)
 

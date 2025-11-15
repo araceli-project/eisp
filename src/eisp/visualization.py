@@ -30,7 +30,8 @@ def plot_tsne(
     plt.title("t-SNE Visualization of Feature Vectors")
     plt.xlabel("t-SNE Dimension 1")
     plt.ylabel("t-SNE Dimension 2")
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    if '/' in save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path)
     plt.close()
     return tsne_results
@@ -63,7 +64,8 @@ def plot_umap(
     plt.title("UMAP Visualization of Feature Vectors")
     plt.xlabel("UMAP Dimension 1")
     plt.ylabel("UMAP Dimension 2")
-    os.makedirs(os.path.dirname(save_path), exist_ok=True)
+    if '/' in save_path:
+        os.makedirs(os.path.dirname(save_path), exist_ok=True)
     plt.savefig(save_path)
     plt.close()
     return umap_results

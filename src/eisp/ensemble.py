@@ -5,6 +5,7 @@ import optuna
 import numpy as np
 from sklearn.model_selection import train_test_split
 from typing import Callable
+import shap
 
 
 class Ensemble:
@@ -14,6 +15,8 @@ class Ensemble:
         self.model: any = None
         self.best_val_metric: float = None
         self.test_metric: float = None
+        self.shap: dict[str, np.ndarray] = None
+        self.shap_aggregated: dict[str, float] = None
 
     def train(
         self,
@@ -25,6 +28,7 @@ class Ensemble:
         optimization_trials: int = 0,
         optimization_direction: str = "maximize",
         num_boost_round: int = 100,
+        should_extract_shap: bool = False
     ):
 
         features = list(self.feature_vectors.get_all_features().values())
@@ -50,6 +54,7 @@ class Ensemble:
                 optimization_direction,
                 metric_function,
                 num_boost_round,
+                should_extract_shap,
                 hyperparams,
             )
         else:
@@ -67,6 +72,7 @@ class Ensemble:
         optimization_direction,
         metric_function,
         num_boost_round,
+        should_extract_shap: bool,
         params=None,
     ):
         if params is None:
@@ -122,4 +128,30 @@ class Ensemble:
         self.model = model
         self.best_val_metric = val_metric_value
         self.test_metric = test_metric_value
+
+        if should_extract_shap:
+            self.extract_aggregated_shap_values_per_feature_xb_boost(X_train)
         return model, val_metric_value, test_metric_value
+
+    def extract_aggregated_shap_values_per_feature_xb_boost(self, X: np.ndarray):
+        if self.model is None:
+            raise ValueError("Model has not been trained yet.")
+        explainer = shap.TreeExplainer(self.model)
+        shap_values = explainer.shap_values(X)
+        feature_sizes = [
+            feature.shape[1] for feature in self.feature_vectors.get_all_features().values()
+        ]
+        shap_per_feature = {}
+        start_idx = 0
+        for i, feature_name in enumerate(self.feature_vectors.get_all_features().keys()):
+            end_idx = start_idx + feature_sizes[i]
+            shap_per_feature[feature_name] = np.sum(shap_values[:, start_idx:end_idx],axis = 1)
+            start_idx = end_idx
+        self.shap = shap_per_feature
+        self.shap_aggregated = {
+            feature_name: np.abs(np.mean(shap_values))
+            for feature_name, shap_values in shap_per_feature.items()
+        }
+
+
+        return shap_per_feature

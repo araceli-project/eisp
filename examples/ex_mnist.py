@@ -8,6 +8,7 @@ from eisp.visualization import (
     plot_tsne_per_feature,
     plot_umap,
     plot_umap_per_feature,
+    plot_feature_importance,
 )
 import numpy as np
 
@@ -122,7 +123,23 @@ ensemble_model.train(
     metric_function=lambda y_true, y_pred: balanced_accuracy_score(
         y_true, np.argmax(y_pred, axis=1)
     ),
+    should_extract_shap=True,
 )
+
+shap_values = ensemble_model.shap
+shap_aggregated = ensemble_model.shap_aggregated
+
+# Plot feature importance
+feature_importance_save_path = "./data/mnist_vis/feature_importance.png"
+plot_feature_importance(
+    shap_aggregated,
+    save_path=feature_importance_save_path,
+)
+print(f"Feature importance plot saved to {feature_importance_save_path}")
+
+print({k: v.shape for k, v in shap_values.items()})
+print({k: v for k, v in shap_aggregated.items()})
+
 print("Ensemble training on MNIST completed successfully.")
 print(f"Best validation metric: {ensemble_model.best_val_metric}")
 print(f"Test metric: {ensemble_model.test_metric}")

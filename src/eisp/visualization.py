@@ -151,6 +151,7 @@ def plot_umap_per_feature(
         plt.savefig(save_path)
         plt.close()
 
+
 def plot_feature_importance(
     shap_agg_values: dict[str, float],
     save_path: str = "feature_importance.png",
@@ -162,7 +163,7 @@ def plot_feature_importance(
     importance_values = list(shap_agg_values.values())
 
     plt.figure(figsize=(10, 6))
-    plt.bar(feature_names, importance_values, color='skyblue')
+    plt.bar(feature_names, importance_values, color="skyblue")
     plt.ylabel("Mean Absolute SHAP Value")
     plt.xlabel("Feature Name")
     plt.title("Feature Importance based on SHAP Values")

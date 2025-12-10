@@ -1,6 +1,6 @@
 [project]
 name = "eisp"
-version = "0.3.3"
+version = "0.3.4"
 authors = [{ name = "Clara Ernesto", email = "clrcera05@gmail.com" }]
 description = "A framework using an ensemble for inference on sensitive data using proxy tasks."
 readme = "README.md"

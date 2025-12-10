@@ -1,15 +1,19 @@
 import xgboost
 from sklearn.metrics import balanced_accuracy_score
+from sklearn.model_selection import KFold
 from eisp.proxy_tasks import FeatureVectors
 import optuna
 import numpy as np
 from sklearn.model_selection import train_test_split
 from typing import Callable
 import shap
+from typing_extensions import Self
 
 
 class Ensemble:
-    def __init__(self, feature_vectors: FeatureVectors, labels: np.ndarray):
+    def __init__(
+        self, feature_vectors: FeatureVectors, labels: np.ndarray, debug=False
+    ):
         self.feature_vectors: FeatureVectors = feature_vectors
         self.training_labels: np.ndarray = labels
         self.model: any = None
@@ -17,6 +21,8 @@ class Ensemble:
         self.test_metric: float = None
         self.shap: dict[str, np.ndarray] = None
         self.shap_aggregated: dict[str, float] = None
+        self.debug = debug
+        self.hyperparams = None
 
     def train(
         self,
@@ -114,6 +120,7 @@ class Ensemble:
             best_params = study.best_params
             params.update(best_params)
 
+        self.hyperparams = params
         dtrain = xgboost.DMatrix(X_train, label=y_train)
         dval = xgboost.DMatrix(X_val, label=y_val)
         dtest = xgboost.DMatrix(X_test, label=y_test)
@@ -159,3 +166,129 @@ class Ensemble:
         }
 
         return shap_per_feature
+
+
+class EnsembleKFold:
+    def __init__(
+        self, feature_vectors: FeatureVectors, labels: np.ndarray, debug=False
+    ):
+        self.feature_vectors: FeatureVectors = feature_vectors
+        self.training_labels: np.ndarray = labels
+        self.shap_aggregated_k_fold: dict[str, list[float]] = None
+        self.val_metric_k_fold: list[float] = None
+        self.debug = debug
+        self.hyperparams = None
+
+    def from_ensemble(ensemble: Ensemble) -> Self:
+        ensemble_k_fold = EnsembleKFold(
+            ensemble.feature_vectors, ensemble.training_labels, ensemble.debug
+        )
+        ensemble_k_fold.hyperparams = ensemble.hyperparams
+        return ensemble_k_fold
+
+    def train_k_fold(
+        self,
+        k: int,
+        model_type: str,
+        metric_function: Callable[
+            [np.ndarray, np.ndarray], float
+        ] = balanced_accuracy_score,
+        num_boost_round: int = 100,
+        should_extract_shap: bool = False,
+    ):
+        features = list(self.feature_vectors.get_all_features().values())
+        X = np.concatenate(features, axis=1)
+        y = self.training_labels
+        kf = KFold(n_splits=k, shuffle=True, random_state=42)
+
+        self.val_metric_k_fold = []
+
+        if should_extract_shap:
+            if self.shap_aggregated_k_fold is None:
+                self.shap_aggregated_k_fold = {
+                    key: [] for key in self.feature_vectors.get_feature_names()
+                }
+
+        for i, (train_index, val_index) in enumerate(kf.split(X)):
+            if self.debug:
+                print(f"Starting fold {i+1}/{k}")
+
+            X_train, X_val = X[train_index], X[val_index]
+            y_train, y_val = y[train_index], y[val_index]
+
+            if model_type == "xgboost":
+                self.train_xgboost_model(
+                    X_train,
+                    y_train,
+                    X_val,
+                    y_val,
+                    metric_function,
+                    num_boost_round,
+                    should_extract_shap,
+                    self.hyperparams,
+                )
+            else:
+                raise ValueError(f"Model type {model_type} not supported.")
+
+    def train_xgboost_model(
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        metric_function,
+        num_boost_round,
+        should_extract_shap: bool,
+        params=None,
+    ):
+        if params is None:
+            params = {
+                "tree_method": "hist",
+                "objective": (
+                    "binary:logistic" if len(set(y_train)) == 2 else "multi:softprob"
+                ),
+                "num_class": len(set(y_train)),
+                "eval_metric": "mlogloss",
+                "seed": 42,
+                "learning_rate": 0.1,
+                "max_depth": 6,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+            }
+
+        dtrain = xgboost.DMatrix(X_train, label=y_train)
+        dval = xgboost.DMatrix(X_val, label=y_val)
+        model = xgboost.train(params, dtrain, num_boost_round=num_boost_round)
+        preds = model.predict(dval)
+        val_metric_value = metric_function(y_val, preds)
+        self.val_metric_k_fold.append(val_metric_value)
+
+        if should_extract_shap:
+            self.extract_aggregated_shap_values_per_feature_xb_boost(X_train, model)
+
+    def extract_aggregated_shap_values_per_feature_xb_boost(self, X: np.ndarray, model):
+        explainer = shap.TreeExplainer(model)
+        shap_values = explainer.shap_values(X)
+        feature_sizes = [
+            feature.shape[1]
+            for feature in self.feature_vectors.get_all_features().values()
+        ]
+        shap_per_feature = {}
+        start_idx = 0
+        for i, feature_name in enumerate(
+            self.feature_vectors.get_all_features().keys()
+        ):
+            end_idx = start_idx + feature_sizes[i]
+            shap_per_feature[feature_name] = np.sum(
+                shap_values[:, start_idx:end_idx], axis=1
+            )
+            start_idx = end_idx
+        shap_aggregated = {
+            feature_name: np.abs(np.mean(shap_values))
+            for feature_name, shap_values in shap_per_feature.items()
+        }
+        self.shap_aggregated_k_fold = {
+            feature_name: self.shap_aggregated_k_fold.get(feature_name, [])
+            + [shap_value]
+            for feature_name, shap_value in shap_aggregated.items()
+        }

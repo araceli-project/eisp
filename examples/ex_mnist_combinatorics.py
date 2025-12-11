@@ -3,7 +3,6 @@ from sklearn.metrics import balanced_accuracy_score
 from eisp.ensemble import Ensemble, EnsembleCombinatorics
 from eisp.proxy_tasks import FeatureVectors
 from eisp.visualization import (
-    plot_feature_importance,
     plot_confusion_matrix,
 )
 import numpy as np

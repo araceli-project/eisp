@@ -1,11 +1,10 @@
 from sklearn.metrics import balanced_accuracy_score
 
-
-from eisp.ensemble import Ensemble, EnsembleKFold
+from eisp.ensemble import Ensemble, EnsembleCombinatorics
 from eisp.proxy_tasks import FeatureVectors
 from eisp.visualization import (
-    plot_confusion_matrix,
     plot_feature_importance,
+    plot_confusion_matrix,
 )
 import numpy as np
 
@@ -60,6 +59,7 @@ train_labels = np.concatenate(train_labels, axis=0)
 
 ensemble_model = Ensemble(train_features, train_labels, debug=True)
 
+print("Starting training of ensemble model...")
 ensemble_model.train(
     model_type="xgboost",
     optimization_trials=5,
@@ -74,61 +74,42 @@ print("Training complete.")
 print("Best hyperparameters:", ensemble_model.hyperparams)
 print("Val metric:", ensemble_model.val_metric)
 
-print("Generating Feature Importance Plot...")
-feature_importance_save_path = "./data/mnist_vis/feature_importance.png"
-plot_feature_importance(ensemble_model.shap_aggregated, feature_importance_save_path)
+print("Starting training of ensemble combinatorics model...")
 
-print(f"Feature importance plot saved to {feature_importance_save_path}")
+ensemble_combinatorics: EnsembleCombinatorics = EnsembleCombinatorics.from_ensemble(
+    ensemble_model
+)
 
-print("Starting K-Fold Cross-Validation Training...")
-
-ensemble_k_fold: EnsembleKFold = EnsembleKFold.from_ensemble(ensemble_model)
-
-ensemble_k_fold.train_k_fold(
-    k=5,
+ensemble_combinatorics.train_combinatorics(
     model_type="xgboost",
     metric_function=lambda y_true, y_pred: balanced_accuracy_score(
         y_true, np.argmax(y_pred, axis=1)
     ),
-    should_extract_shap=True,
 )
 
-print("K-Fold Training complete.")
-print("Best validation metrics for each fold:", ensemble_k_fold.val_metric_k_fold)
-print("Shap aggregated values for each fold:", ensemble_k_fold.shap_aggregated_k_fold)
-
-mean_shap_values_over_folds = {}
-for feature in ensemble_k_fold.shap_aggregated_k_fold.keys():
-    mean_shap_values_over_folds[feature] = np.mean(
-        ensemble_k_fold.shap_aggregated_k_fold[feature]
-    )
-print("Mean SHAP values over folds:", mean_shap_values_over_folds)
-
-k_fold_feature_importance_save_path = "./data/mnist_vis/feature_importance_k_fold.png"
-plot_feature_importance(
-    mean_shap_values_over_folds, k_fold_feature_importance_save_path
-)
+print("Combinatorics training complete.")
 
 print(
-    f"Feature importance plot for K-Fold saved to {k_fold_feature_importance_save_path}"
+    "Best validation metric per feature combination:",
+    ensemble_combinatorics.best_val_metric,
 )
+print("Best feature combination:", ensemble_combinatorics.best_feature_combination)
 
-print("Plotting confusion matrix for K-Fold")
-confusion_matrix_k_fold_save_path = "./data/mnist_vis/confusion_matrix_k_fold.png"
 
-# generate pred_labels and true_labels by concatenating predictions from each fold
-all_pred_labels = []
-for fold_pred in ensemble_k_fold.pred_labels_k_fold:
-    all_pred_labels.append(np.argmax(fold_pred, axis=1))
-all_pred_labels = np.concatenate(all_pred_labels, axis=0)
+print("Plotting confusion matrix")
 
-all_true_labels = np.concatenate(ensemble_k_fold.true_labels_k_fold, axis=0)
-
+confusion_matrix_save_path = "./data/mnist_vis/confusion_matrix_combinatorics.png"
 plot_confusion_matrix(
-    true_labels=all_true_labels,
-    pred_labels=all_pred_labels,
+    true_labels=ensemble_combinatorics.best_true_labels,
+    pred_labels=np.argmax(ensemble_combinatorics.best_pred_labels, axis=1),
     class_names=[str(i) for i in range(10)],
-    save_path=confusion_matrix_k_fold_save_path,
+    save_path=confusion_matrix_save_path,
 )
 
-print("Example script for MNIST with K-Fold Cross-Validation completed successfully.")
+print(f"Confusion matrix plot saved to {confusion_matrix_save_path}")
+
+print("Saving combinatorics training data to disk...")
+
+data_save_path = "./data/mnist_vis/ensemble_combinatorics_data.csv"
+
+ensemble_combinatorics.save_training_data_to_disk(data_save_path)

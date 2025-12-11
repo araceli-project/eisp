@@ -1,4 +1,5 @@
 from sklearn.manifold import TSNE
+from sklearn.metrics import confusion_matrix
 from matplotlib import pyplot as plt
 import umap
 import eisp.proxy_tasks as pt
@@ -167,6 +168,39 @@ def plot_feature_importance(
     plt.ylabel("Mean Absolute SHAP Value")
     plt.xlabel("Feature Name")
     plt.title("Feature Importance based on SHAP Values")
+    plt.tight_layout()
+    plt.savefig(save_path)
+    plt.close()
+
+
+def plot_confusion_matrix(
+    true_labels: np.ndarray,
+    pred_labels: np.ndarray,
+    class_names: list[str],
+    save_path: str = "confusion_matrix.png",
+):
+    cm = confusion_matrix(true_labels, pred_labels)
+    plt.figure(figsize=(8, 6))
+    plt.imshow(cm, interpolation="nearest", cmap=plt.cm.Blues)
+    plt.title("Confusion Matrix")
+    plt.colorbar()
+    tick_marks = np.arange(len(class_names))
+    plt.xticks(tick_marks, class_names, rotation=45)
+    plt.yticks(tick_marks, class_names)
+
+    thresh = cm.max() / 2.0
+    for i in range(cm.shape[0]):
+        for j in range(cm.shape[1]):
+            plt.text(
+                j,
+                i,
+                format(cm[i, j], "d"),
+                horizontalalignment="center",
+                color="white" if cm[i, j] > thresh else "black",
+            )
+
+    plt.ylabel("True Label")
+    plt.xlabel("Predicted Label")
     plt.tight_layout()
     plt.savefig(save_path)
     plt.close()

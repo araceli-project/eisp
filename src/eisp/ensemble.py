@@ -8,6 +8,8 @@ from sklearn.model_selection import train_test_split
 from typing import Callable
 import shap
 from typing_extensions import Self
+from itertools import combinations
+import pandas as pd
 
 
 class Ensemble:
@@ -16,9 +18,10 @@ class Ensemble:
     ):
         self.feature_vectors: FeatureVectors = feature_vectors
         self.training_labels: np.ndarray = labels
+        self.pred_labels: np.ndarray = None
+        self.true_labels: np.ndarray = None
         self.model: any = None
-        self.best_val_metric: float = None
-        self.test_metric: float = None
+        self.val_metric: float = None
         self.shap: dict[str, np.ndarray] = None
         self.shap_aggregated: dict[str, float] = None
         self.debug = debug
@@ -111,7 +114,9 @@ class Ensemble:
             return metric_function(y_val, preds)
 
         if optimization_trials > 0:
+            sampler = optuna.samplers.TPESampler(seed=42)
             study = optuna.create_study(
+                sampler=sampler,
                 direction=optimization_direction,
                 study_name="xgboost_ensemble_optimization",
             )
@@ -122,23 +127,21 @@ class Ensemble:
 
         self.hyperparams = params
         dtrain = xgboost.DMatrix(X_train, label=y_train)
-        dval = xgboost.DMatrix(X_val, label=y_val)
         dtest = xgboost.DMatrix(X_test, label=y_test)
 
         model = xgboost.train(params, dtrain, num_boost_round=num_boost_round)
 
-        preds = model.predict(dval)
-        val_metric_value = metric_function(y_val, preds)
         preds_test = model.predict(dtest)
         test_metric_value = metric_function(y_test, preds_test)
+        self.pred_labels = preds_test
+        self.true_labels = y_test
 
         self.model = model
-        self.best_val_metric = val_metric_value
-        self.test_metric = test_metric_value
+        self.val_metric = test_metric_value
 
         if should_extract_shap:
             self.extract_aggregated_shap_values_per_feature_xb_boost(X_train)
-        return model, val_metric_value, test_metric_value
+        return model, test_metric_value
 
     def extract_aggregated_shap_values_per_feature_xb_boost(self, X: np.ndarray):
         if self.model is None:
@@ -167,6 +170,24 @@ class Ensemble:
 
         return shap_per_feature
 
+    def test_xgboost(
+        self, X_test: np.ndarray, y_test: np.ndarray, metric_function=None
+    ):
+        if self.model is None:
+            raise ValueError("Model has not been trained yet.")
+        dtest = xgboost.DMatrix(X_test, label=y_test)
+        preds_test = self.model.predict(dtest)
+        if metric_function:
+            test_metric_value = metric_function(y_test, preds_test)
+        return test_metric_value, preds_test
+
+    def predict_xgboost(self, X: np.ndarray):
+        if self.model is None:
+            raise ValueError("Model has not been trained yet.")
+        dmatrix = xgboost.DMatrix(X)
+        preds = self.model.predict(dmatrix)
+        return preds
+
 
 class EnsembleKFold:
     def __init__(
@@ -174,6 +195,8 @@ class EnsembleKFold:
     ):
         self.feature_vectors: FeatureVectors = feature_vectors
         self.training_labels: np.ndarray = labels
+        self.pred_labels_k_fold: list[np.ndarray] = None
+        self.true_labels_k_fold: list[np.ndarray] = None
         self.shap_aggregated_k_fold: dict[str, list[float]] = None
         self.val_metric_k_fold: list[float] = None
         self.debug = debug
@@ -202,6 +225,8 @@ class EnsembleKFold:
         kf = KFold(n_splits=k, shuffle=True, random_state=42)
 
         self.val_metric_k_fold = []
+        self.pred_labels_k_fold = []
+        self.true_labels_k_fold = []
 
         if should_extract_shap:
             if self.shap_aggregated_k_fold is None:
@@ -260,6 +285,8 @@ class EnsembleKFold:
         dval = xgboost.DMatrix(X_val, label=y_val)
         model = xgboost.train(params, dtrain, num_boost_round=num_boost_round)
         preds = model.predict(dval)
+        self.pred_labels_k_fold.append(preds)
+        self.true_labels_k_fold.append(y_val)
         val_metric_value = metric_function(y_val, preds)
         self.val_metric_k_fold.append(val_metric_value)
 
@@ -292,3 +319,139 @@ class EnsembleKFold:
             + [shap_value]
             for feature_name, shap_value in shap_aggregated.items()
         }
+
+
+class EnsembleCombinatorics:
+    def __init__(
+        self, feature_vectors: FeatureVectors, labels: np.ndarray, debug=False
+    ):
+        self.feature_vectors: FeatureVectors = feature_vectors
+        self.training_labels: np.ndarray = labels
+        self.best_pred_labels: np.ndarray = None
+        self.best_true_labels: np.ndarray = None
+        self.best_model: any = None
+        self.best_val_metric: float = None
+        self.best_feature_combination: list[str] = None
+        self.debug = debug
+        self.hyperparams = None
+        self.training_data: list = None
+
+    def from_ensemble(ensemble: Ensemble) -> Self:
+        ensemble_comb = EnsembleCombinatorics(
+            ensemble.feature_vectors, ensemble.training_labels, ensemble.debug
+        )
+        ensemble_comb.hyperparams = ensemble.hyperparams
+        return ensemble_comb
+
+    def train_combinatorics(
+        self,
+        model_type: str,
+        metric_function: Callable[
+            [np.ndarray, np.ndarray], float
+        ] = balanced_accuracy_score,
+        num_boost_round: int = 100,
+    ):
+
+        all_features_with_names = list(self.feature_vectors.get_all_features().items())
+
+        self.training_data = []
+        curr_val_metric = None
+
+        for i in range(1, len(all_features_with_names) + 1):
+            if self.debug:
+                print(f"Evaluating feature combinations of size {i}")
+
+            for feature_subset in combinations(all_features_with_names, i):
+                feature_names = [feature[0] for feature in feature_subset]
+                if self.debug:
+                    print(f"Training with features: {feature_names}")
+
+                X = np.concatenate([feature[1] for feature in feature_subset], axis=1)
+                y = self.training_labels
+
+                X_train, X_val, y_train, y_val = train_test_split(
+                    X, y, test_size=0.2, random_state=42, stratify=y
+                )
+
+                if model_type == "xgboost":
+                    curr_val_metric = self.train_xgboost_model(
+                        X_train,
+                        y_train,
+                        X_val,
+                        y_val,
+                        metric_function,
+                        num_boost_round,
+                        self.hyperparams,
+                    )
+                else:
+                    raise ValueError(f"Model type {model_type} not supported.")
+
+                self.training_data.append((feature_names, curr_val_metric))
+                if self.debug:
+                    print(
+                        f"Feature combination: {feature_names}, Val Metric: {curr_val_metric}"
+                    )
+        self.training_data.sort(key=lambda x: x[1], reverse=True)
+        self.best_feature_combination = self.training_data[0][0]
+
+    def train_xgboost_model(
+        self,
+        X_train,
+        y_train,
+        X_val,
+        y_val,
+        metric_function,
+        num_boost_round: int,
+        params=None,
+    ):
+        if params is None:
+            params = {
+                "tree_method": "hist",
+                "objective": (
+                    "binary:logistic" if len(set(y_train)) == 2 else "multi:softprob"
+                ),
+                "num_class": len(set(y_train)),
+                "eval_metric": "mlogloss",
+                "seed": 42,
+                "learning_rate": 0.1,
+                "max_depth": 6,
+                "subsample": 0.8,
+                "colsample_bytree": 0.8,
+            }
+
+        dtrain = xgboost.DMatrix(X_train, label=y_train)
+        dval = xgboost.DMatrix(X_val, label=y_val)
+        model = xgboost.train(params, dtrain, num_boost_round=num_boost_round)
+        preds = model.predict(dval)
+        val_metric_value = metric_function(y_val, preds)
+
+        if self.best_val_metric is None or val_metric_value > self.best_val_metric:
+            self.best_val_metric = val_metric_value
+            self.best_model = model
+            self.best_pred_labels = preds
+            self.best_true_labels = y_val
+
+        return val_metric_value
+
+    def test_xgboost(
+        self, X_test: np.ndarray, y_test: np.ndarray, metric_function=None
+    ):
+        if self.best_model is None:
+            raise ValueError("Model has not been trained yet.")
+        dtest = xgboost.DMatrix(X_test, label=y_test)
+        preds_test = self.best_model.predict(dtest)
+        if metric_function:
+            test_metric_value = metric_function(y_test, preds_test)
+        return test_metric_value, preds_test
+
+    def predict_xgboost(self, X: np.ndarray):
+        if self.best_model is None:
+            raise ValueError("Model has not been trained yet.")
+        dmatrix = xgboost.DMatrix(X)
+        preds = self.best_model.predict(dmatrix)
+        return preds
+
+    def save_training_data_to_disk(self, save_path: str):
+        columns = ["feature_combination", "val_metric"]
+        data = pd.DataFrame(self.training_data, columns=columns)
+        data.to_csv(save_path, index=False)

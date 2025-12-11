@@ -154,3 +154,25 @@ class FeatureVectors:
 
     def get_feature_names(self) -> list[str]:
         return list(self.features.keys())
+
+    def train_test_split(
+        self, test_size: float = 0.2, random_state: int = None
+    ) -> tuple[Self, Self]:
+        if test_size < 0 or test_size > 1:
+            raise ValueError("test_size must be between 0 and 1.")
+
+        np.random.seed(random_state)
+        indices = np.arange(self.tuples_count)
+        np.random.shuffle(indices)
+
+        split_idx = int(self.tuples_count * (1 - test_size))
+        train_indices = indices[:split_idx]
+        test_indices = indices[split_idx:]
+
+        train_features = {}
+        test_features = {}
+        for name, feature in self.features.items():
+            train_features[name] = feature[train_indices]
+            test_features[name] = feature[test_indices]
+
+        return FeatureVectors(train_features), FeatureVectors(test_features), train_indices, test_indices

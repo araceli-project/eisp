@@ -157,7 +157,7 @@ class FeatureVectors:
 
     def train_test_split(
         self, test_size: float = 0.2, random_state: int = None
-    ) -> tuple[Self, Self]:
+    ) -> tuple[Self, Self , np.ndarray, np.ndarray]:
         if test_size < 0 or test_size > 1:
             raise ValueError("test_size must be between 0 and 1.")
 

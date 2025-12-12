@@ -58,35 +58,16 @@ for _, target in train_loader:
     train_labels.append(target.numpy())
 train_labels = np.concatenate(train_labels, axis=0)
 
-ensemble_model = Ensemble(train_features, train_labels, debug=True)
-
-ensemble_model.train(
-    model_type="xgboost",
-    optimization_trials=5,
-    optimization_direction="maximize",
-    metric_function=lambda y_true, y_pred: balanced_accuracy_score(
-        y_true, np.argmax(y_pred, axis=1)
-    ),
-    should_extract_shap=True,
-)
-
-print("Training complete.")
-print("Best hyperparameters:", ensemble_model.hyperparams)
-print("Val metric:", ensemble_model.val_metric)
-
-print("Generating Feature Importance Plot...")
-feature_importance_save_path = "./data/mnist_vis/feature_importance.png"
-plot_feature_importance(ensemble_model.shap_aggregated, feature_importance_save_path)
-
-print(f"Feature importance plot saved to {feature_importance_save_path}")
 
 print("Starting K-Fold Cross-Validation Training...")
 
-ensemble_k_fold: EnsembleKFold = EnsembleKFold.from_ensemble(ensemble_model)
+ensemble_k_fold: EnsembleKFold = EnsembleKFold(train_features, train_labels, debug=True)
 
 ensemble_k_fold.train_k_fold(
     k=5,
     model_type="xgboost",
+    optimization_trials=5,
+    optimization_direction="maximize",
     metric_function=lambda y_true, y_pred: balanced_accuracy_score(
         y_true, np.argmax(y_pred, axis=1)
     ),

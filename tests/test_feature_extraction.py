@@ -123,3 +123,53 @@ def test_feature_extraction_parallel():
     for name in proxy_features_names:
         os.remove(os.path.join("./test_features_parallel", f"{name}.npy"))
     os.rmdir("./test_features_parallel")
+
+def test_feature_sep_train_test():
+    from src.eisp.proxy_tasks import FeatureVectors
+    from torch.utils.data import DataLoader, TensorDataset
+    import torch
+    import numpy as np
+
+    # Create a simple dataset
+    data = torch.randn(
+        IMG_NUM_SAMPLES, 3, 32, 32
+    )  # IMG_NUM_SAMPLES samples of 3x32x32 images
+    labels = torch.randint(0, 10, (IMG_NUM_SAMPLES,))  # Random labels for 10 classes
+    dataset = TensorDataset(data, labels)
+    dataloader = DataLoader(dataset, batch_size=10)
+
+    # Define simple feature extraction functions
+    def mean_feature(x):
+        return x.mean(dim=(1, 2, 3)).numpy().reshape(-1, 1)
+
+    proxy_features_functions = [mean_feature]
+    proxy_features_names = ["mean"]
+
+    # Run feature extraction
+    featureVectors: FeatureVectors = FeatureVectors.extract(
+        dataloader,
+        proxy_features_functions,
+        proxy_features_names,
+    )
+
+    train_features, test_features, train_indices, test_indices = featureVectors.train_test_split(test_size=0.2, random_state=42)
+
+    # Check sizes
+    assert train_features.get_feature("mean").shape[0] == 80
+    assert test_features.get_feature("mean").shape[0] == 20
+
+    # Check that indices are correct
+    all_indices = np.concatenate([train_indices, test_indices])
+    assert set(all_indices) == set(range(IMG_NUM_SAMPLES))
+    assert len(set(train_indices).intersection(set(test_indices))) == 0
+
+    # Check that features correspond to original
+    original_features = featureVectors.get_feature("mean")
+    assert np.array_equal(
+        train_features.get_feature("mean"),
+        original_features[train_indices],
+    )
+    assert np.array_equal(
+        test_features.get_feature("mean"),
+        original_features[test_indices],
+    )

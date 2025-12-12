@@ -175,4 +175,9 @@ class FeatureVectors:
             train_features[name] = feature[train_indices]
             test_features[name] = feature[test_indices]
 
-        return FeatureVectors(train_features), FeatureVectors(test_features), train_indices, test_indices
+        return (
+            FeatureVectors(train_features),
+            FeatureVectors(test_features),
+            train_indices,
+            test_indices,
+        )

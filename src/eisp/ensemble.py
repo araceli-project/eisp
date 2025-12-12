@@ -284,7 +284,6 @@ class EnsembleKFold:
                 X_train, X_val = X[train_index], X[val_index]
                 y_train, y_val = y[train_index], y[val_index]
 
-
                 dtrain = xgboost.DMatrix(X_train, label=y_train)
                 dval = xgboost.DMatrix(X_val, label=y_val)
                 model = xgboost.train(params, dtrain, num_boost_round=num_boost_round)
@@ -297,11 +296,20 @@ class EnsembleKFold:
                 if self.debug:
                     print(f"Fold {i+1} Val Metric: {val_metric_value}")
                 if should_extract_shap:
-                    inst_shap_aggregated_k_fold = self.extract_aggregated_shap_values_per_feature_xb_boost(X_train, model, inst_shap_aggregated_k_fold)
+                    inst_shap_aggregated_k_fold = (
+                        self.extract_aggregated_shap_values_per_feature_xb_boost(
+                            X_train, model, inst_shap_aggregated_k_fold
+                        )
+                    )
 
             inst_average_val_metric = np.mean(inst_val_metric_k_fold)
-            if self.average_val_metric is None or inst_average_val_metric > self.average_val_metric:
-                print(f"New best average val metric across folds: {inst_average_val_metric}")
+            if (
+                self.average_val_metric is None
+                or inst_average_val_metric > self.average_val_metric
+            ):
+                print(
+                    f"New best average val metric across folds: {inst_average_val_metric}"
+                )
                 self.average_val_metric = inst_average_val_metric
                 self.val_metric_k_fold = inst_val_metric_k_fold
                 self.pred_labels_k_fold = inst_pred_labels_k_fold
@@ -320,9 +328,12 @@ class EnsembleKFold:
         best_params = study.best_params
         params.update(best_params)
 
-
-
-    def extract_aggregated_shap_values_per_feature_xb_boost(self, X: np.ndarray, model, shap_aggregated_k_fold: dict[str, list[float]] = None):
+    def extract_aggregated_shap_values_per_feature_xb_boost(
+        self,
+        X: np.ndarray,
+        model,
+        shap_aggregated_k_fold: dict[str, list[float]] = None,
+    ):
         explainer = shap.TreeExplainer(model)
         shap_values = explainer.shap_values(X)
         feature_sizes = [
@@ -344,8 +355,7 @@ class EnsembleKFold:
             for feature_name, shap_values in shap_per_feature.items()
         }
         shap_aggregated_k_fold = {
-            feature_name: shap_aggregated_k_fold.get(feature_name, [])
-            + [shap_value]
+            feature_name: shap_aggregated_k_fold.get(feature_name, []) + [shap_value]
             for feature_name, shap_value in shap_aggregated.items()
         }
         return shap_aggregated_k_fold

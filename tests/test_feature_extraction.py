@@ -124,6 +124,7 @@ def test_feature_extraction_parallel():
         os.remove(os.path.join("./test_features_parallel", f"{name}.npy"))
     os.rmdir("./test_features_parallel")
 
+
 def test_feature_sep_train_test():
     from src.eisp.proxy_tasks import FeatureVectors
     from torch.utils.data import DataLoader, TensorDataset
@@ -152,7 +153,9 @@ def test_feature_sep_train_test():
         proxy_features_names,
     )
 
-    train_features, test_features, train_indices, test_indices = featureVectors.train_test_split(test_size=0.2, random_state=42)
+    train_features, test_features, train_indices, test_indices = (
+        featureVectors.train_test_split(test_size=0.2, random_state=42)
+    )
 
     # Check sizes
     assert train_features.get_feature("mean").shape[0] == 80

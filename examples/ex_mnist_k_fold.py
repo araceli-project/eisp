@@ -1,7 +1,7 @@
 from sklearn.metrics import balanced_accuracy_score
 
 
-from eisp.ensemble import Ensemble, EnsembleKFold
+from eisp.ensemble import EnsembleKFold
 from eisp.proxy_tasks import FeatureVectors
 from eisp.visualization import (
     plot_confusion_matrix,

@@ -125,9 +125,12 @@ class FeatureVectors:
         pca_features = {}
         for name, feature in self.features.items():
             # Test all powers of 2 less than the feature dimension
-            possible_components_num = [
-                2**i for i in range(int(np.log2(feature.shape[1])) + 1)
-            ]
+            possible_components_num = []
+            power = 2
+            while power < min(feature.shape):
+                possible_components_num.append(power)
+                power *= 2
+
             for num_components in possible_components_num:
                 pca_model = PCA(n_components=num_components).fit(feature)
                 if pca_model.explained_variance_ratio_.sum() >= 0.8:

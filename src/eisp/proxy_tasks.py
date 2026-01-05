@@ -118,11 +118,12 @@ class FeatureVectors:
     def get_all_features(self) -> dict[str, np.ndarray]:
         return self.features
 
-    def apply_pca(self) -> Self:
+    def apply_pca(self) -> tuple[Self, dict[str, PCA]]:
         if self.pca_processed:
             return self
 
         pca_features = {}
+        pca_models = {}
         for name, feature in self.features.items():
             # Test all powers of 2 less than the feature dimension
             possible_components_num = []
@@ -138,6 +139,25 @@ class FeatureVectors:
                     break
             if name not in pca_features:
                 pca_features[name] = feature  # If no PCA applied, keep original
+                pca_models[name] = None
+            else:
+                pca_models[name] = pca_model
+
+        pca_feature_vectors = FeatureVectors(pca_features)
+
+        # Avoid reapplying PCA multiple times, if saved to disk,
+        # this flag will be False when loaded again
+        pca_feature_vectors.pca_processed = True
+        return pca_feature_vectors, pca_models
+
+    def apply_pca_models(self, pca_models: dict[str, PCA]) -> Self:
+        pca_features = {}
+        for name, feature in self.features.items():
+            pca_model = pca_models.get(name, None)
+            if pca_model is not None:
+                pca_features[name] = pca_model.transform(feature)
+            else:
+                pca_features[name] = feature  # If no PCA model, keep original
 
         pca_feature_vectors = FeatureVectors(pca_features)
 

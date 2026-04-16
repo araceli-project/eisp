@@ -176,3 +176,66 @@ def test_feature_sep_train_test():
         test_features.get_feature("mean"),
         original_features[test_indices],
     )
+
+
+def test_feature_extraction_and_inference():
+    from src.eisp.proxy_tasks import FeatureVectors
+    from torch.utils.data import DataLoader, TensorDataset
+    import torch
+    import numpy as np
+
+    # Create a simple dataset
+    data = torch.randn(IMG_NUM_SAMPLES, 3, 32, 32)
+    labels = torch.randint(0, 10, (IMG_NUM_SAMPLES,))
+    dataset = TensorDataset(data, labels)
+    dataloader = DataLoader(dataset, batch_size=10)
+
+    # Define feature extraction and inference functions
+    def mean_feature(x):
+        return x.mean(dim=(1, 2, 3)).numpy().reshape(-1, 1)
+
+    def std_feature(x):
+        return x.std(dim=(1, 2, 3)).numpy().reshape(-1, 1)
+
+    def mean_positive_inference(x):
+        return (x.mean(dim=(1, 2, 3)) > 0).numpy()
+
+    def first_pixel_inference(x):
+        return x[:, 0, 0, 0].numpy()
+
+    proxy_features_functions = [mean_feature, std_feature]
+    proxy_features_names = ["mean", "std"]
+    proxy_features_function_arguments = [None, None]
+    proxy_features_inference_functions = [
+        mean_positive_inference,
+        first_pixel_inference,
+    ]
+
+    # Run feature extraction + inference
+    featureVectors = FeatureVectors.extract_and_infer(
+        dataloader=dataloader,
+        proxy_features_functions=proxy_features_functions,
+        proxy_features_names=proxy_features_names,
+        proxy_features_function_arguments=proxy_features_function_arguments,
+        proxy_features_inference_functions=proxy_features_inference_functions,
+    )
+
+    features = featureVectors.get_all_features()
+    inference_results = featureVectors.inference_results
+
+    # Check extracted feature shapes
+    assert features["mean"].shape == (IMG_NUM_SAMPLES, 1)
+    assert features["std"].shape == (IMG_NUM_SAMPLES, 1)
+
+    # Inference results are stored per batch for each feature
+    expected_batches = IMG_NUM_SAMPLES // 10
+    assert len(inference_results["mean"]) == expected_batches
+    assert len(inference_results["std"]) == expected_batches
+
+    first_batch_inputs, _ = next(iter(dataloader))
+    assert np.array_equal(
+        inference_results["mean"][0], mean_positive_inference(first_batch_inputs)
+    )
+    assert np.array_equal(
+        inference_results["std"][0], first_pixel_inference(first_batch_inputs)
+    )

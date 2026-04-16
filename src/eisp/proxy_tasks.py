@@ -6,11 +6,13 @@ from typing import Callable
 from collections.abc import Iterable
 import joblib
 from typing_extensions import Self
+from typing import Any
 
 
 class FeatureVectors:
     def __init__(self, features: dict):
         self.features: dict[str, np.ndarray] = features
+        self.inference_results: dict[str, Any] = {}
         self.pca_processed: bool = False
         if len(features) == 0:
             self.tuples_count = 0
@@ -60,8 +62,8 @@ class FeatureVectors:
                     results.append(result)
                 return results
 
-            with joblib.Parallel(n_jobs=-1) as parallel:
-                results = parallel(
+            with joblib.Parallel(n_jobs=-1) as parallelj:
+                results = parallelj(
                     joblib.delayed(extract_features_feature)(function, args, dataloader)
                     for function, args in zip(
                         proxy_features_functions,
@@ -99,6 +101,79 @@ class FeatureVectors:
                 np.save(os.path.join(store_path, f"{name}.npy"), all_features[name])
 
         return FeatureVectors(all_features)
+    
+    def extract_and_infer(
+        dataloader: Iterable[any],
+        proxy_features_functions: list[Callable[[any], np.ndarray]],
+        proxy_features_names: list[str] = None,
+        proxy_features_function_arguments: list[dict] = None,
+        proxy_features_inference_functions: list[Callable[[any], Any]] = None,
+    ) -> Self:
+
+        if not proxy_features_functions or len(proxy_features_functions) == 0:
+            raise ValueError("proxy_features_functions must be provided.")
+
+        if not proxy_features_names:
+            proxy_features_names = [
+                f"feature_{i}" for i in range(len(proxy_features_functions))
+            ]
+        if len(proxy_features_functions) != len(proxy_features_names):
+            raise ValueError(
+                "Length of proxy_features_functions and proxy_features_names must match."
+            )
+        if not proxy_features_function_arguments:
+            proxy_features_function_arguments = [{}] * len(proxy_features_functions)
+        if len(proxy_features_functions) != len(proxy_features_function_arguments):
+            raise ValueError(
+                "Length of proxy_features_functions and proxy_features_function_arguments must match."
+            )
+        if (
+            not proxy_features_inference_functions
+            or len(proxy_features_inference_functions) == 0
+        ):
+            raise ValueError("proxy_features_inference_functions must be provided.")
+        if len(proxy_features_functions) != len(proxy_features_inference_functions):
+            raise ValueError(
+                "Length of proxy_features_functions and proxy_features_inference_functions must match."
+            )
+
+        all_features = {name: [] for name in proxy_features_names}
+        all_inference_results = {name: [] for name in proxy_features_names}
+        # Sequential feature extraction
+        for function, name, args, inference_function in zip(
+            proxy_features_functions,
+            proxy_features_names,
+            proxy_features_function_arguments,
+            proxy_features_inference_functions,
+        ):
+            if not callable(function):
+                raise ValueError(
+                    f"Feature extraction function for {name} is not callable."
+                )
+            if not callable(inference_function):
+                raise ValueError(
+                    f"Inference function for {name} is not callable."
+                )
+            for data in tqdm.tqdm(
+                dataloader, desc="Extracting features for " + name
+            ):
+                inputs, _ = data  # Assuming dataloader returns (inputs, labels)
+                features = function(
+                    inputs, **(args or {})
+                )  # Extract features using the provided function
+                all_features[name].append(features)
+                all_inference_results[name].append(inference_function(inputs))
+
+
+
+        # Concatenate and save features
+        for name in proxy_features_names:
+            all_features[name] = np.concatenate(all_features[name], axis=0)
+
+        feature_vectors = FeatureVectors(all_features)
+        feature_vectors.inference_results = all_inference_results
+        return feature_vectors
+
 
     def from_files(store_path: str) -> Self:
         if not os.path.exists(store_path):

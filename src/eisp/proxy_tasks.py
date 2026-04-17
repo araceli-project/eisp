@@ -158,7 +158,7 @@ class FeatureVectors:
                     inputs, **(args or {})
                 )  # Extract features using the provided function
                 all_features[name].append(features)
-                all_inference_results[name].append(inference_function(inputs))
+                all_inference_results[name].append(inference_function(inputs, **(args or {})))
 
         # Concatenate and save features
         for name in proxy_features_names:

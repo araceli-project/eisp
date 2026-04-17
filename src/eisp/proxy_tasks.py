@@ -101,7 +101,7 @@ class FeatureVectors:
                 np.save(os.path.join(store_path, f"{name}.npy"), all_features[name])
 
         return FeatureVectors(all_features)
-    
+
     def extract_and_infer(
         dataloader: Iterable[any],
         proxy_features_functions: list[Callable[[any], np.ndarray]],
@@ -151,20 +151,14 @@ class FeatureVectors:
                     f"Feature extraction function for {name} is not callable."
                 )
             if not callable(inference_function):
-                raise ValueError(
-                    f"Inference function for {name} is not callable."
-                )
-            for data in tqdm.tqdm(
-                dataloader, desc="Extracting features for " + name
-            ):
+                raise ValueError(f"Inference function for {name} is not callable.")
+            for data in tqdm.tqdm(dataloader, desc="Extracting features for " + name):
                 inputs, _ = data  # Assuming dataloader returns (inputs, labels)
                 features = function(
                     inputs, **(args or {})
                 )  # Extract features using the provided function
                 all_features[name].append(features)
                 all_inference_results[name].append(inference_function(inputs))
-
-
 
         # Concatenate and save features
         for name in proxy_features_names:
@@ -173,7 +167,6 @@ class FeatureVectors:
         feature_vectors = FeatureVectors(all_features)
         feature_vectors.inference_results = all_inference_results
         return feature_vectors
-
 
     def from_files(store_path: str) -> Self:
         if not os.path.exists(store_path):
